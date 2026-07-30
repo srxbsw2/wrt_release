@@ -77,14 +77,16 @@ jobs:
         env:
           RAW_ADD_CONFIG_FRAGMENTS: ${{ inputs.add_fragments }}
           RAW_REMOVE_CONFIG_FRAGMENTS: ${{ inputs.remove_fragments }}
+          TZ: "Asia/Shanghai" # 全局将此步骤的时区设为 Asia/Shanghai
         run: |
-          sudo -E timedatectl set-timezone "Asia/Shanghai"
-          export BUILD_DATE=$(TZ=UTC-8 date +"%y.%m.%d_%H.%M.%S")
+          sudo ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
+          # 直接使用 date 命令（会自动读取上述设置的时区）
+          export BUILD_DATE=$(date +"%y.%m.%d_%H.%M.%S")
           echo "BUILD_DATE=$BUILD_DATE" >> $GITHUB_ENV
           sanitize_cache_key_part() { printf '%s' "$1" | tr -c 'A-Za-z0-9_.-' '_'; }
           echo "ADD_CONFIG_FRAGMENTS_KEY=$(sanitize_cache_key_part "$RAW_ADD_CONFIG_FRAGMENTS")" >> $GITHUB_ENV
           echo "REMOVE_CONFIG_FRAGMENTS_KEY=$(sanitize_cache_key_part "$RAW_REMOVE_CONFIG_FRAGMENTS")" >> $GITHUB_ENV
-
+         
       - name: Pre Clone
         run: ./wrt_core/pre_clone_action.sh ${{ inputs.model }}
 
