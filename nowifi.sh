@@ -393,7 +393,7 @@ purge_all_wifi_components() {
     echo "====================================="
     echo "Start purging all WiFi/Ath11k wireless components ..."
     echo "====================================="
-
+    rm -rf "$build_root/package/feeds/packages/net/freeradius3"
     # 1. 删除源码目录内无线驱动、固件、board文件完整文件夹
     # ath11k 无线驱动内核模块
     rm -rf "$build_root/package/kmod/ath11k"
@@ -483,17 +483,7 @@ print_config_fragment_summary
 remove_uhttpd_dependency
 
 cd "$BASE_PATH/../$BUILD_DIR"
-make defconfig || true
-# ========= 修复编译循环依赖报错 =========
-        # 彻底清除freeradius整套配置，杜绝被动依赖选中
-        sed -i '/CONFIG.*freeradius/d' "$cfg_file"
-        echo "# CONFIG_PACKAGE_freeradius3 is not set" >> "$cfg_file"
-        echo "# CONFIG_PACKAGE_freeradius3-common is not set" >> "$cfg_file"
-
-        # 关闭nftables-nojson 解决自循环依赖bug
-        sed -i '/CONFIG_PACKAGE_nftables-nojson/d' "$cfg_file"
-        echo "# CONFIG_PACKAGE_nftables-nojson is not set" >> "$cfg_file"
-
+make defconfig 
 
 if grep -qE "^CONFIG_TARGET_x86_64=y" "$CONFIG_FILE"; then
     DISTFEEDS_PATH="$BASE_PATH/../$BUILD_DIR/package/emortal/default-settings/files/99-distfeeds.conf"
