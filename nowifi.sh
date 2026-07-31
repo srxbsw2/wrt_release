@@ -409,22 +409,31 @@ purge_all_wifi_components() {
     # 2. 清空 .config 内所有WiFi、ath11k、无线固件相关配置项
     local cfg_file="$build_root/.config"
     if [ -f "$cfg_file" ]; then
-        # 删除所有ath11k内核模块、无线固件开关
+        # ========= WiFi无线相关全部清理 =========
         sed -i '/^CONFIG_PACKAGE_kmod-ath11k/d' "$cfg_file"
         sed -i '/^CONFIG_PACKAGE_ath11k-firmware/d' "$cfg_file"
         sed -i '/^CONFIG_IPQ_WIFI/d' "$cfg_file"
         sed -i '/^CONFIG_WIRELESS/d' "$cfg_file"
         sed -i '/^CONFIG_ATH11K/d' "$cfg_file"
-        # 关闭WiFi相关子系统、mac80211无线栈
         sed -i '/^CONFIG_PACKAGE_mac80211/d' "$cfg_file"
         sed -i '/^CONFIG_PACKAGE_cfg80211/d' "$cfg_file"
         sed -i '/^CONFIG_PACKAGE_wireless-tools/d' "$cfg_file"
         sed -i '/^CONFIG_PACKAGE_iw/d' "$cfg_file"
 
-        # 强制关闭所有无线选项，防止make defconfig重新生成
+        # 强制关闭无线全套选项，防止defconfig回填
         echo "# CONFIG_PACKAGE_kmod-ath11k is not set" >> "$cfg_file"
-        echo "# CONFIG_PACKAGE_ath11k-firmware-qcn9074-ddwrt is not set" >> "$cfg_file"
+        echo "# CONFIG_PACKAGE_ath11k-firmware is not set" >> "$cfg_file"
         echo "# CONFIG_IPQ_WIFI is not set" >> "$cfg_file"
+
+        # ========= 修复编译循环依赖报错 =========
+        # 彻底清除freeradius整套配置，杜绝被动依赖选中
+        sed -i '/CONFIG.*freeradius/d' "$cfg_file"
+        echo "# CONFIG_PACKAGE_freeradius3 is not set" >> "$cfg_file"
+        echo "# CONFIG_PACKAGE_freeradius3-common is not set" >> "$cfg_file"
+
+        # 关闭nftables-nojson 解决自循环依赖bug
+        sed -i '/CONFIG_PACKAGE_nftables-nojson/d' "$cfg_file"
+        echo "# CONFIG_PACKAGE_nftables-nojson is not set" >> "$cfg_file"
     fi
 
     echo "WiFi purge completed, no wireless hardware will be compiled."
