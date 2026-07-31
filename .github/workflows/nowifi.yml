@@ -1,4 +1,4 @@
-name: Build WRT
+name: Build nowifi
 run-name: Build - ${{ inputs.model }}
 
 on:
