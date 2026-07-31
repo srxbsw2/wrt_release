@@ -423,7 +423,11 @@ purge_all_wifi_components() {
         # 强制关闭无线全套选项，防止defconfig回填
         echo "# CONFIG_PACKAGE_kmod-ath11k is not set" >> "$cfg_file"
         echo "# CONFIG_PACKAGE_ath11k-firmware is not set" >> "$cfg_file"
-        echo "# CONFIG_IPQ_WIFI is not set" >> "$cfg_file"      
+        echo "# CONFIG_IPQ_WIFI is not set" >> "$cfg_file" 
+        
+        # 关闭nftables-nojson 修复自循环依赖BUG
+        sed -i '/CONFIG_PACKAGE_nftables-nojson/d' "$cfg_file"
+        echo "# CONFIG_PACKAGE_nftables-nojson is not set" >> "$cfg_file"
     fi
 
     echo "WiFi purge completed, no wireless hardware will be compiled."
