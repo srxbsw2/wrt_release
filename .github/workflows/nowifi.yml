@@ -141,7 +141,9 @@ jobs:
         env:
           ADD_CONFIG_FRAGMENTS: ${{ inputs.add_fragments }}
           REMOVE_CONFIG_FRAGMENTS: ${{ inputs.remove_fragments }}
-        run: ./nowifi.sh ${{ inputs.model }}
+        run: |
+              chmod +x ./nowifi.sh
+              ./nowifi.sh ${{ inputs.model }}
 
       - name: Delete Old Cache
         run: |
