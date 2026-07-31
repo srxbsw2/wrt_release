@@ -423,17 +423,7 @@ purge_all_wifi_components() {
         # 强制关闭无线全套选项，防止defconfig回填
         echo "# CONFIG_PACKAGE_kmod-ath11k is not set" >> "$cfg_file"
         echo "# CONFIG_PACKAGE_ath11k-firmware is not set" >> "$cfg_file"
-        echo "# CONFIG_IPQ_WIFI is not set" >> "$cfg_file"
-
-        # ========= 修复编译循环依赖报错 =========
-        # 彻底清除freeradius整套配置，杜绝被动依赖选中
-        sed -i '/CONFIG.*freeradius/d' "$cfg_file"
-        echo "# CONFIG_PACKAGE_freeradius3 is not set" >> "$cfg_file"
-        echo "# CONFIG_PACKAGE_freeradius3-common is not set" >> "$cfg_file"
-
-        # 关闭nftables-nojson 解决自循环依赖bug
-        sed -i '/CONFIG_PACKAGE_nftables-nojson/d' "$cfg_file"
-        echo "# CONFIG_PACKAGE_nftables-nojson is not set" >> "$cfg_file"
+        echo "# CONFIG_IPQ_WIFI is not set" >> "$cfg_file"      
     fi
 
     echo "WiFi purge completed, no wireless hardware will be compiled."
@@ -493,7 +483,17 @@ print_config_fragment_summary
 remove_uhttpd_dependency
 
 cd "$BASE_PATH/../$BUILD_DIR"
-make defconfig
+make defconfig || true
+# ========= 修复编译循环依赖报错 =========
+        # 彻底清除freeradius整套配置，杜绝被动依赖选中
+        sed -i '/CONFIG.*freeradius/d' "$cfg_file"
+        echo "# CONFIG_PACKAGE_freeradius3 is not set" >> "$cfg_file"
+        echo "# CONFIG_PACKAGE_freeradius3-common is not set" >> "$cfg_file"
+
+        # 关闭nftables-nojson 解决自循环依赖bug
+        sed -i '/CONFIG_PACKAGE_nftables-nojson/d' "$cfg_file"
+        echo "# CONFIG_PACKAGE_nftables-nojson is not set" >> "$cfg_file"
+
 
 if grep -qE "^CONFIG_TARGET_x86_64=y" "$CONFIG_FILE"; then
     DISTFEEDS_PATH="$BASE_PATH/../$BUILD_DIR/package/emortal/default-settings/files/99-distfeeds.conf"
