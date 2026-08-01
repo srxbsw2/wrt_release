@@ -390,11 +390,15 @@ remove_uhttpd_dependency() {
 hard_fix_kconfig_bugs() {
     local build_root="$BASE_PATH/../$BUILD_DIR"
     if [ -d "$build_root" ]; then
-        # 在 update.sh 运行前/后强行将 nftables-nojson 的递归 select 抹平
-        grep -rnw "select PACKAGE_nftables-nojson" "$build_root" 2>/dev/null | cut -d: -f1 | xargs -r sed -i '/select PACKAGE_nftables-nojson/d' || true
-        # 彻底干掉引起 freeradius 递归的包
+        # 1. 直接【物理删除】导致 recursive dependency 的罪魁祸首包目录
+        find "$build_root" -type d -name "nftables-nojson" -exec rm -rf {} + 2>/dev/null || true
+        
+        # 2. 彻底干掉引起 freeradius 递归的包
         rm -rf "$build_root/feeds/packages/net/freeradius3" 2>/dev/null || true
         rm -rf "$build_root/package/feeds/packages/freeradius3" 2>/dev/null || true
+
+        # 3. 扫尾：如果还有其他 Makefile 或 Config.in 里面残留了对它的 select，一律剔除
+        grep -rnw "PACKAGE_nftables-nojson" "$build_root/package" "$build_root/feeds" 2>/dev/null | cut -d: -f1 | sort -u | xargs -r sed -i '/PACKAGE_nftables-nojson/d' || true
     fi
 }
 
