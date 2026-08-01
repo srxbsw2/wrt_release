@@ -393,7 +393,7 @@ purge_all_wifi_components() {
     echo "Start purging all WiFi components and fixing Kconfig errors..."
     echo "====================================="
 
-    # 1. 彻底移除引起递归依赖问题的 freeradius3 (包含源 feed 及 package 目录)
+    # 1. 彻底移除引起递归依赖问题的 freeradius3
     rm -rf "$build_root/package/feeds/packages/freeradius3"
     rm -rf "$build_root/feeds/packages/net/freeradius3"
 
@@ -405,8 +405,11 @@ purge_all_wifi_components() {
     rm -rf "$build_root/target/linux/qualcommax/files/wireless"
     rm -rf "$build_root/target/linux/qualcommax/ipq60xx/wireless"
 
-    # 3. 修复 nftables-nojson 自身递归选中的底层 BUG（直接修改 Makefile）
-    find "$build_root/package" "$build_root/feeds" -maxdepth 5 -name "Makefile" -exec sed -i '/select PACKAGE_nftables-nojson/d' {} + 2>/dev/null || true
+    # 3. 彻底清除 nftables-nojson 自身递归选中的 BUG
+    # 使用 -L 穿透软链接，去掉 -maxdepth 限制，全盘搜索并删除所有 select PACKAGE_nftables-nojson
+    find -L "$build_root" -type f -name "Makefile" -exec sed -i '/select PACKAGE_nftables-nojson/d' {} + 2>/dev/null || true
+    # 如果有 nftables-nojson 专属的 Makefile，直接删除避免污染
+    find -L "$build_root" -type d -name "nftables-nojson" -exec rm -rf {} + 2>/dev/null || true
 
     # 4. 清理并禁用 .config 内相关配置
     local cfg_file="$build_root/.config"
@@ -427,10 +430,10 @@ purge_all_wifi_components() {
         echo "# CONFIG_PACKAGE_kmod-ath11k is not set" >> "$cfg_file"
         echo "# CONFIG_PACKAGE_ath11k-firmware is not set" >> "$cfg_file"
         echo "# CONFIG_IPQ_WIFI is not set" >> "$cfg_file"
-        echo "# CONFIG_PACKAGE_nftables-nojson is not set" >> "$cfg_file"
+        echo "CONFIG_PACKAGE_nftables-nojson=n" >> "$cfg_file"
     fi
 
-    # 5. 彻底删除 tmp 缓存，迫使 Kconfig 重新读取文件结构
+    # 5. 彻底删除 tmp 缓存，迫使 Kconfig 重新构建 index 树
     rm -rf "$build_root/tmp"
 
     echo "WiFi purge and Kconfig fix completed."
