@@ -36,17 +36,6 @@ collect_supported_devs() {
         if [[ -f "$BASE_PATH/deconfig/$dev_key.config" ]]; then
             SUPPORTED_DEVS+=("$dev_key")
         fi
-        cd "$BASE_PATH/../$BUILD_DIR"
-
-# 写入全局强制覆盖配置，优先级最高
-cat > kconfig.override <<EOF
-CONFIG_PACKAGE_freeradius3=n
-CONFIG_PACKAGE_freeradius3-common=n
-CONFIG_PACKAGE_nftables-nojson=n
-EOF
-
-# 携带覆盖文件执行defconfig
-make defconfig KCONFIG_OVERRIDE=./kconfig.override
     done
 
     if [[ ${#SUPPORTED_DEVS[@]} -eq 0 ]]; then
@@ -328,7 +317,6 @@ print_config_preview() {
         echo "  $order) $CONFIG_FRAGMENT_DIR/$fragment.config"
         order=$((order + 1))
     done
-
 }
 
 prepare_container_image() {
@@ -398,29 +386,32 @@ remove_uhttpd_dependency() {
     fi
 }
 
-# ====================== 新增：彻底清除WiFi所有文件 + .config无线配置 ======================
+# ====================== 清除WiFi + 彻底修正Kconfig递归依赖 ======================
 purge_all_wifi_components() {
     local build_root="$BASE_PATH/../$BUILD_DIR"
     echo "====================================="
-    echo "Start purging all WiFi/Ath11k wireless components ..."
+    echo "Start purging all WiFi components and fixing Kconfig errors..."
     echo "====================================="
-    rm -rf "$build_root/package/feeds/packages/net/freeradius3"
-    # 1. 删除源码目录内无线驱动、固件、board文件完整文件夹
-    # ath11k 无线驱动内核模块
+
+    # 1. 彻底移除引起递归依赖问题的 freeradius3 (包含源 feed 及 package 目录)
+    rm -rf "$build_root/package/feeds/packages/freeradius3"
+    rm -rf "$build_root/feeds/packages/net/freeradius3"
+
+    # 2. 移除无线硬件相关驱动与固件包
     rm -rf "$build_root/package/kmod/ath11k"
-    # qcn9074 / ipq6018 无线固件包
     rm -rf "$build_root/package/firmware/ath11k-firmware"
-    # 设备专属WiFi board.bin、无线校准文件
     rm -rf "$build_root/package/wireless"
     rm -rf "$build_root/package/ipq-wifi"
-    # 高通无线射频平台相关文件
     rm -rf "$build_root/target/linux/qualcommax/files/wireless"
     rm -rf "$build_root/target/linux/qualcommax/ipq60xx/wireless"
 
-    # 2. 清空 .config 内所有WiFi、ath11k、无线固件相关配置项
+    # 3. 修复 nftables-nojson 自身递归选中的底层 BUG（直接修改 Makefile）
+    find "$build_root/package" "$build_root/feeds" -maxdepth 5 -name "Makefile" -exec sed -i '/select PACKAGE_nftables-nojson/d' {} + 2>/dev/null || true
+
+    # 4. 清理并禁用 .config 内相关配置
     local cfg_file="$build_root/.config"
     if [ -f "$cfg_file" ]; then
-        # ========= WiFi无线相关全部清理 =========
+        sed -i '/^CONFIG_PACKAGE_freeradius3/d' "$cfg_file"
         sed -i '/^CONFIG_PACKAGE_kmod-ath11k/d' "$cfg_file"
         sed -i '/^CONFIG_PACKAGE_ath11k-firmware/d' "$cfg_file"
         sed -i '/^CONFIG_IPQ_WIFI/d' "$cfg_file"
@@ -430,18 +421,19 @@ purge_all_wifi_components() {
         sed -i '/^CONFIG_PACKAGE_cfg80211/d' "$cfg_file"
         sed -i '/^CONFIG_PACKAGE_wireless-tools/d' "$cfg_file"
         sed -i '/^CONFIG_PACKAGE_iw/d' "$cfg_file"
+        sed -i '/^CONFIG_PACKAGE_nftables-nojson/d' "$cfg_file"
 
-        # 强制关闭无线全套选项，防止defconfig回填
+        echo "CONFIG_PACKAGE_freeradius3=n" >> "$cfg_file"
         echo "# CONFIG_PACKAGE_kmod-ath11k is not set" >> "$cfg_file"
         echo "# CONFIG_PACKAGE_ath11k-firmware is not set" >> "$cfg_file"
-        echo "# CONFIG_IPQ_WIFI is not set" >> "$cfg_file" 
-        
-        # 关闭nftables-nojson 修复自循环依赖BUG
-        sed -i '/CONFIG_PACKAGE_nftables-nojson/d' "$cfg_file"
+        echo "# CONFIG_IPQ_WIFI is not set" >> "$cfg_file"
         echo "# CONFIG_PACKAGE_nftables-nojson is not set" >> "$cfg_file"
     fi
 
-    echo "WiFi purge completed, no wireless hardware will be compiled."
+    # 5. 彻底删除 tmp 缓存，迫使 Kconfig 重新读取文件结构
+    rm -rf "$build_root/tmp"
+
+    echo "WiFi purge and Kconfig fix completed."
     echo "====================================="
 }
 
@@ -465,7 +457,6 @@ apply_config() {
     for fragment in "${EFFECTIVE_CONFIG_FRAGMENTS[@]}"; do
         cat "$CONFIG_FRAGMENT_DIR/$fragment.config" >> "$BASE_PATH/../$BUILD_DIR/.config"
     done
-
 }
 
 # 读取设备元信息，确定上游源码和构建目录。
@@ -491,14 +482,15 @@ fi
 "$BASE_PATH/update.sh" "$REPO_URL" "$REPO_BRANCH" "$BUILD_DIR" "$COMMIT_HASH"
 
 apply_config
-# 核心调用：合并完config立刻清空WiFi所有内容
+
+# 核心调用：合并完 config 后清理 WiFi 并修复所有 Kconfig 语法递归
 purge_all_wifi_components
 
 print_config_fragment_summary
 remove_uhttpd_dependency
 
 cd "$BASE_PATH/../$BUILD_DIR"
-make defconfig 
+make defconfig
 
 if grep -qE "^CONFIG_TARGET_x86_64=y" "$CONFIG_FILE"; then
     DISTFEEDS_PATH="$BASE_PATH/../$BUILD_DIR/package/emortal/default-settings/files/99-distfeeds.conf"
