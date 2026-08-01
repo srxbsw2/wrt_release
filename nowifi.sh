@@ -36,6 +36,17 @@ collect_supported_devs() {
         if [[ -f "$BASE_PATH/deconfig/$dev_key.config" ]]; then
             SUPPORTED_DEVS+=("$dev_key")
         fi
+        cd "$BASE_PATH/../$BUILD_DIR"
+
+# 写入全局强制覆盖配置，优先级最高
+cat > kconfig.override <<EOF
+CONFIG_PACKAGE_freeradius3=n
+CONFIG_PACKAGE_freeradius3-common=n
+CONFIG_PACKAGE_nftables-nojson=n
+EOF
+
+# 携带覆盖文件执行defconfig
+make defconfig KCONFIG_OVERRIDE=./kconfig.override
     done
 
     if [[ ${#SUPPORTED_DEVS[@]} -eq 0 ]]; then
