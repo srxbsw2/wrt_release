@@ -410,7 +410,7 @@ purge_all_wifi_components() {
     echo "Start purging all WiFi components and fixing Kconfig errors..."
     echo "====================================="
 
-    hard_fix_kconfig_bugs
+    fix_common_kconfig_bugs
 
     # 3. 清理并禁用 .config 内相关配置
     local cfg_file="$build_root/.config"
@@ -480,7 +480,7 @@ hard_fix_kconfig_bugs
 "$BASE_PATH/update.sh" "$REPO_URL" "$REPO_BRANCH" "$BUILD_DIR" "$COMMIT_HASH"
 
 # 在 update.sh 运行之后（它更新完了所有的 feeds 源码），再次精准摧毁递归依赖
-hard_fix_kconfig_bugs
+fix_common_kconfig_bugs
 
 apply_config
 purge_all_wifi_components
