@@ -396,6 +396,41 @@ if [[ $Build_Mod == "container_debug" ]]; then
     run_container_build "debug"
     exit 0
 fi
+# -------------------------------------------------------------
+# 强行修复 Kconfig 递归死循环依赖 Bug (freeradius3 & nftables)
+# -------------------------------------------------------------
+fix_kconfig_recursion_bugs() {
+    local build_root="$BASE_PATH/../$BUILD_DIR"
+    echo "====================================="
+    echo "Fixing Kconfig recursive dependencies..."
+    echo "====================================="
+
+    # 1. 直接删除引发死循环依赖的源文件目录（这些一般路由固件用不到）
+    rm -rf "$build_root/feeds/packages/net/freeradius3"
+    rm -rf "$build_root/package/feeds/packages/freeradius3"
+    
+    # 2. 如果存在 nftables-nojson 冲突包，直接物理删除
+    find "$build_root/package/" "$build_root/feeds/" -type d -name "nftables-nojson" -exec rm -rf {} + 2>/dev/null
+
+    # 3. 擦除 tmp 目录，强制重新生成包树索引（非常重要！否则缓存还在）
+    rm -rf "$build_root/tmp"
+
+    # 4. 彻底清理 .config 中的残余配置项
+    local cfg_file="$build_root/.config"
+    if [ -f "$cfg_file" ]; then
+        sed -i '/FREERADIUS3/d' "$cfg_file"
+        sed -i '/nftables-nojson/d' "$cfg_file"
+        echo "# CONFIG_PACKAGE_freeradius3 is not set" >> "$cfg_file"
+        echo "# CONFIG_PACKAGE_nftables-nojson is not set" >> "$cfg_file"
+    fi
+
+    echo "Kconfig recursion fixes applied successfully."
+    echo "====================================="
+}
+
+# 在 purge_all_wifi_components 或 make defconfig 之前调用该函数
+fix_kconfig_recursion_bugs
+
 
 apply_config() {
     local fragment
