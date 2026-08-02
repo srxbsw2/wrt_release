@@ -387,15 +387,6 @@ remove_uhttpd_dependency() {
     fi
 }
 
-if [[ $Build_Mod == "container" ]]; then
-    run_container_build ""
-    exit 0
-fi
-
-if [[ $Build_Mod == "container_debug" ]]; then
-    run_container_build "debug"
-    exit 0
-fi
 # -------------------------------------------------------------
 # 强行修复 Kconfig 递归死循环依赖 Bug (freeradius3 & nftables)
 # -------------------------------------------------------------
@@ -430,6 +421,17 @@ fix_kconfig_recursion_bugs() {
 
 # 在 purge_all_wifi_components 或 make defconfig 之前调用该函数
 fix_kconfig_recursion_bugs
+
+
+if [[ $Build_Mod == "container" ]]; then
+    run_container_build ""
+    exit 0
+fi
+
+if [[ $Build_Mod == "container_debug" ]]; then
+    run_container_build "debug"
+    exit 0
+fi
 
 
 apply_config() {
