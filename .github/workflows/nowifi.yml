@@ -185,5 +185,5 @@ jobs:
       - name: Upload Firmware
         uses: actions/upload-artifact@v7.0.1
         with:
-          name: ${{ env.BUILD_DATE }}_${{ inputs.model }}
+          name: ${{ env.BUILD_DATE }}_nowifi_${{ inputs.model }}
           path: ./firmware/*.*
