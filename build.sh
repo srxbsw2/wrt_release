@@ -475,7 +475,7 @@ if [[ -d action_build ]]; then
 fi
 
 # 在运行 update.sh 之前先做一次预防性清除
-hard_fix_kconfig_bugs
+fix_common_kconfig_bugs
 
 "$BASE_PATH/update.sh" "$REPO_URL" "$REPO_BRANCH" "$BUILD_DIR" "$COMMIT_HASH"
 
