@@ -391,33 +391,18 @@ remove_uhttpd_dependency() {
 # 通用修复：解决 Kconfig 循环依赖死锁 (安全容错版)
 # =========================================================
 fix_common_kconfig_bugs() {
-    # 自动识别 OpenWrt 源码根目录
-    local root_dir="${BASE_PATH:-.}/../${BUILD_DIR:-.}"
-    [ ! -d "$root_dir/feeds" ] && root_dir="."
+    local build_root="$BASE_PATH/../$BUILD_DIR"
+    if [ -d "$build_root" ]; then
+        # 1. 直接【物理删除】导致 recursive dependency 的罪魁祸首包目录
+        find "$build_root" -type d -name "nftables-nojson" -exec rm -rf {} + 2>/dev/null || true
+        
+        # 2. 彻底干掉引起 freeradius 递归的包
+        rm -rf "$build_root/feeds/packages/net/freeradius3" 2>/dev/null || true
+        rm -rf "$build_root/package/feeds/packages/freeradius3" 2>/dev/null || true
 
-    echo "====================================="
-    echo "Fixing Kconfig recursive dependencies..."
-    echo "====================================="
-
-    # 1. 物理擦除引发 Kconfig 死锁的源文件（使用 || true 避免 Bash -e 触发 exit code 1 报错退出）
-    rm -rf "$root_dir/feeds/packages/net/freeradius3" || true
-    rm -rf "$root_dir/package/feeds/packages/freeradius3" || true
-    find "$root_dir/package/" "$root_dir/feeds/" -type d -name "nftables-nojson" -exec rm -rf {} + 2>/dev/null || true
-
-    # 2. 安全擦除 tmp 缓存（必须擦除，否则 OpenWrt 会读取旧的死锁索引）
-    rm -rf "$root_dir/tmp" || true
-
-    # 3. 清理 .config 中的死锁残留项（如果文件已存在）
-    local cfg_file="$root_dir/.config"
-    if [ -f "$cfg_file" ]; then
-        sed -i '/FREERADIUS3/d' "$cfg_file" || true
-        sed -i '/nftables-nojson/d' "$cfg_file" || true
-        echo "# CONFIG_PACKAGE_freeradius3 is not set" >> "$cfg_file"
-        echo "# CONFIG_PACKAGE_nftables-nojson is not set" >> "$cfg_file"
+        # 3. 扫尾：如果还有其他 Makefile 或 Config.in 里面残留了对它的 select，一律剔除
+        grep -rnw "PACKAGE_nftables-nojson" "$build_root/package" "$build_root/feeds" 2>/dev/null | cut -d: -f1 | sort -u | xargs -r sed -i '/PACKAGE_nftables-nojson/d' || true
     fi
-
-    echo "Common Kconfig fixes completed successfully."
-    echo "====================================="
 }
 
 
