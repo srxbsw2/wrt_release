@@ -404,6 +404,30 @@ fix_common_kconfig_bugs() {
         grep -rnw "PACKAGE_nftables-nojson" "$build_root/package" "$build_root/feeds" 2>/dev/null | cut -d: -f1 | sort -u | xargs -r sed -i '/PACKAGE_nftables-nojson/d' || true
     fi
 }
+purge_all_wifi_components() {
+    local build_root="$BASE_PATH/../$BUILD_DIR"
+    echo "====================================="
+    echo "Start purging all WiFi components and fixing Kconfig errors..."
+    echo "====================================="
+
+    hard_fix_kconfig_bugs
+
+    # 3. 清理并禁用 .config 内相关配置
+    local cfg_file="$build_root/.config"
+    if [ -f "$cfg_file" ]; then
+        sed -i '/^CONFIG_PACKAGE_freeradius3/d' "$cfg_file"
+        sed -i '/^CONFIG_PACKAGE_nftables-nojson/d' "$cfg_file"
+
+        echo "CONFIG_PACKAGE_freeradius3=n" >> "$cfg_file"
+        echo "# CONFIG_PACKAGE_nftables-nojson is not set" >> "$cfg_file"
+    fi
+
+    # 4. 彻底擦除 tmp 缓存，强制使 Makefile 修复立刻生效
+    rm -rf "$build_root/tmp"
+
+    echo "WiFi purge and Kconfig fix completed."
+    echo "====================================="
+}
 
 
 if [[ $Build_Mod == "container" ]]; then
@@ -450,13 +474,25 @@ if [[ -d action_build ]]; then
     BUILD_DIR="action_build"
 fi
 
+# 在运行 update.sh 之前先做一次预防性清除
+hard_fix_kconfig_bugs
+
 "$BASE_PATH/update.sh" "$REPO_URL" "$REPO_BRANCH" "$BUILD_DIR" "$COMMIT_HASH"
 
+# 在 update.sh 运行之后（它更新完了所有的 feeds 源码），再次精准摧毁递归依赖
+hard_fix_kconfig_bugs
+
 apply_config
+purge_all_wifi_components
+
 print_config_fragment_summary
 remove_uhttpd_dependency
 
 cd "$BASE_PATH/../$BUILD_DIR"
+
+# 再次确认擦除 tmp 缓存，避免 update.sh 生成的旧索引被 Makefile 加载
+rm -rf tmp
+
 make defconfig
 
 if grep -qE "^CONFIG_TARGET_x86_64=y" "$CONFIG_FILE"; then
