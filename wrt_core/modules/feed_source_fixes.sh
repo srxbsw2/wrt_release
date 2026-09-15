@@ -277,3 +277,12 @@ remove_tweaked_packages() {
         fi
     fi
 }
+
+# ========================================================
+# 添加 Momo 客户端 (OpenWrt-momo) 源码
+# ========================================================
+if [ -d "package" ]; then
+    echo "正在拉取 OpenWrt-momo 源码..."
+    rm -rf package/luci-app-momo package/momo
+    git clone --depth=1 https://github.com/nikkinikki-org/OpenWrt-momo.git package/luci-app-momo
+fi
