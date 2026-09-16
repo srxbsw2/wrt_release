@@ -257,14 +257,12 @@ collect_missing_directories() {
         fi
     done
 }
-# 创建自定义 hook，在编译系统打包 rootfs 的前一秒强制替换 /usr/bin/sing-box
+# 创建自定义 hook 目录，打包 rootfs 时强行覆盖 /usr/bin/sing-box
 mkdir -p files/usr/bin
 
 echo "==> 下载并准备强行替换 reF1nd 版 sing-box..."
 SINGBOX_URL="https://github.com/reF1nd/sing-box-releases/releases/download/v1.15.0-alpha.4-reF1nd/sing-box-1.15.0-alpha.4-reF1nd-linux-arm64-musl.tar.gz"
 
-# 下载并解压到自定义镜像的 files/usr/bin/ 目录
-curl -sL "$SINGBOX_URL" | tar -xz -C /tmp/
-mv /tmp/singbox-*/sing-box files/usr/bin/sing-box
+# 直接解压并将文件提取至 files/usr/bin/ 目录
+curl -sL "$SINGBOX_URL" | tar -xz -C files/usr/bin/ sing-box
 chmod +x files/usr/bin/sing-box
-rm -rf /tmp/singbox-*
