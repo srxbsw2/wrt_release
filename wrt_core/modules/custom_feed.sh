@@ -257,21 +257,3 @@ collect_missing_directories() {
         fi
     done
 }
-# 创建自定义 hook 目录
-mkdir -p files/usr/bin /tmp/sb_temp
-
-echo "==> 下载并准备强行替换 reF1nd 版 sing-box..."
-SINGBOX_URL="https://github.com/reF1nd/sing-box-releases/releases/download/v1.15.0-alpha.4-reF1nd/sing-box-1.15.0-alpha.4-reF1nd-linux-arm64-musl.tar.gz"
-
-# 1. 下载压缩包
-curl -sL "$SINGBOX_URL" -o /tmp/sb.tar.gz
-
-# 2. 解压到临时文件夹
-tar -xzf /tmp/sb.tar.gz -C /tmp/sb_temp
-
-# 3. 不管它解压出来叫什么目录，直接 find 找到名为 sing-box 的可执行文件并移动
-find /tmp/sb_temp -type f -name "sing-box" -exec mv {} files/usr/bin/sing-box \;
-
-# 4. 赋予执行权限并清理临时文件
-chmod +x files/usr/bin/sing-box
-rm -rf /tmp/sb.tar.gz /tmp/sb_temp
