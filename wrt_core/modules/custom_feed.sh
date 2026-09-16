@@ -257,3 +257,17 @@ collect_missing_directories() {
         fi
     done
 }
+# ========================================================
+# 替换为 reF1nd 版 sing-box 核心
+# ========================================================
+echo "==> 正在替换自定义 sing-box 核心..."
+SINGBOX_URL="https://github.com/reF1nd/sing-box-releases/releases/download/v1.15.0-alpha.4-reF1nd/sing-box-1.15.0-alpha.4-reF1nd-linux-arm64-musl.tar.gz"
+
+# 创建临时目录下载并解压
+mkdir -p /tmp/singbox_temp
+curl -sL "$SINGBOX_URL" | tar -xz -C /tmp/singbox_temp
+
+# 找到解压出来的 sing-box 可执行文件并覆盖到 package/bin 路径中
+# (或者直接覆盖 package 编译输出目录)
+find /tmp/singbox_temp -type f -name "sing-box" -exec cp -f {} package/luci-app-momo/root/usr/bin/sing-box \; 2>/dev/null || true
+rm -rf /tmp/singbox_temp
