@@ -493,7 +493,35 @@ cd "$BASE_PATH/../$BUILD_DIR"
 # 再次确认擦除 tmp 缓存，避免 update.sh 生成的旧索引被 Makefile 加载
 rm -rf tmp
 
+# 1. 强制在系统 package 配置中启用 NFQUEUE 模块
+cat <<EOF >> .config
+CONFIG_PACKAGE_kmod-nfnetlink=y
+CONFIG_PACKAGE_kmod-nfnetlink-queue=y
+CONFIG_PACKAGE_kmod-nft-queue=y
+EOF
+
+# 2. 强制开启底层 Linux 内核的 NFQUEUE 驱动支持（修复变量转义与全局匹配）
+for target_config in target/linux/*/config-* target/linux/*/*/config-*; do
+  if [ -f "$target_config" ]; then
+    echo "CONFIG_NETFILTER_NETLINK_QUEUE=y" >> "$target_config"
+    echo "CONFIG_NET_CLS_ACT=y" >> "$target_config"
+    echo "CONFIG_NET_ACT_MIRRED=y" >> "$target_config"
+  fi
+done
+
+
 make defconfig
+
+cat <<EOF >> .config
+CONFIG_PACKAGE_kmod-nfnetlink=y
+CONFIG_PACKAGE_kmod-nfnetlink-queue=y
+CONFIG_PACKAGE_kmod-nft-queue=y
+EOF
+
+# 4. 再次刷新配置确认依赖补全
+make defconfig
+
+
 
 if grep -qE "^CONFIG_TARGET_x86_64=y" "$CONFIG_FILE"; then
     DISTFEEDS_PATH="$BASE_PATH/../$BUILD_DIR/package/emortal/default-settings/files/99-distfeeds.conf"
