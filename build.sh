@@ -493,14 +493,7 @@ cd "$BASE_PATH/../$BUILD_DIR"
 # 再次确认擦除 tmp 缓存，避免 update.sh 生成的旧索引被 Makefile 加载
 rm -rf tmp
 
-# 1. 强制在系统 package 配置中启用 NFQUEUE 模块
-cat <<EOF >> .config
-CONFIG_PACKAGE_kmod-nfnetlink=y
-CONFIG_PACKAGE_kmod-nfnetlink-queue=y
-CONFIG_PACKAGE_kmod-nft-queue=y
-EOF
-
-# 2. 强制开启底层 Linux 内核的 NFQUEUE 驱动支持（修复变量转义与全局匹配）
+# 【关键步骤 1】：先在底层内核模板中开启 NFQUEUE 驱动支持
 for target_config in target/linux/*/config-* target/linux/*/*/config-*; do
   if [ -f "$target_config" ]; then
     echo "CONFIG_NETFILTER_NETLINK_QUEUE=y" >> "$target_config"
@@ -509,16 +502,22 @@ for target_config in target/linux/*/config-* target/linux/*/*/config-*; do
   fi
 done
 
-
-make defconfig
-
+# 【关键步骤 2】：向应用层 .config 追加 package 参数
 cat <<EOF >> .config
 CONFIG_PACKAGE_kmod-nfnetlink=y
 CONFIG_PACKAGE_kmod-nfnetlink-queue=y
 CONFIG_PACKAGE_kmod-nft-queue=y
 EOF
 
-# 4. 再次刷新配置确认依赖补全
+# 【关键步骤 3】：运行 make defconfig 刷新依赖
+make defconfig
+
+# 【关键步骤 4】：防止 make defconfig 刷掉 package 配置，再补充写入一次并再次刷新
+cat <<EOF >> .config
+CONFIG_PACKAGE_kmod-nfnetlink=y
+CONFIG_PACKAGE_kmod-nfnetlink-queue=y
+CONFIG_PACKAGE_kmod-nft-queue=y
+EOF
 make defconfig
 
 
