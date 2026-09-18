@@ -493,33 +493,6 @@ cd "$BASE_PATH/../$BUILD_DIR"
 # 再次确认擦除 tmp 缓存，避免 update.sh 生成的旧索引被 Makefile 加载
 rm -rf tmp
 
-for target_config in target/linux/*/config-* target/linux/*/*/config-*; do
-  if [ -f "$target_config" ]; then
-    echo "CONFIG_NETFILTER_NETLINK_QUEUE=y" >> "$target_config"
-    echo "CONFIG_NETFILTER_XT_TARGET_NFQUEUE=y" >> "$target_config"
-    echo "CONFIG_NET_CLS_ACT=y" >> "$target_config"
-    echo "CONFIG_NET_ACT_MIRRED=y" >> "$target_config"
-  fi
-done
-
-# 4. 追加基础依赖包与目标包到 .config
-cat <<EOF >> .config
-CONFIG_PACKAGE_kmod-nfnetlink=y
-CONFIG_PACKAGE_kmod-nfnetlink-queue=y
-CONFIG_PACKAGE_kmod-nft-queue=y
-CONFIG_PACKAGE_iptables-mod-nfqueue=y
-EOF
-
-# 5. 执行第一次 defconfig 展开依赖关系
-make defconfig
-
-# 6. 再次补写并刷新（防止 defconfig 将未满足依赖的配置清理）
-cat <<EOF >> .config
-CONFIG_PACKAGE_kmod-nfnetlink=y
-CONFIG_PACKAGE_kmod-nfnetlink-queue=y
-CONFIG_PACKAGE_kmod-nft-queue=y
-CONFIG_PACKAGE_iptables-mod-nfqueue=y
-EOF
 make defconfig
 
 
