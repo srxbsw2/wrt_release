@@ -493,30 +493,32 @@ cd "$BASE_PATH/../$BUILD_DIR"
 # 再次确认擦除 tmp 缓存，避免 update.sh 生成的旧索引被 Makefile 加载
 rm -rf tmp
 
-# 【关键步骤 1】：先在底层内核模板中开启 NFQUEUE 驱动支持
 for target_config in target/linux/*/config-* target/linux/*/*/config-*; do
   if [ -f "$target_config" ]; then
     echo "CONFIG_NETFILTER_NETLINK_QUEUE=y" >> "$target_config"
+    echo "CONFIG_NETFILTER_XT_TARGET_NFQUEUE=y" >> "$target_config"
     echo "CONFIG_NET_CLS_ACT=y" >> "$target_config"
     echo "CONFIG_NET_ACT_MIRRED=y" >> "$target_config"
   fi
 done
 
-# 【关键步骤 2】：向应用层 .config 追加 package 参数
+# 4. 追加基础依赖包与目标包到 .config
 cat <<EOF >> .config
 CONFIG_PACKAGE_kmod-nfnetlink=y
 CONFIG_PACKAGE_kmod-nfnetlink-queue=y
 CONFIG_PACKAGE_kmod-nft-queue=y
+CONFIG_PACKAGE_iptables-mod-nfqueue=y
 EOF
 
-# 【关键步骤 3】：运行 make defconfig 刷新依赖
+# 5. 执行第一次 defconfig 展开依赖关系
 make defconfig
 
-# 【关键步骤 4】：防止 make defconfig 刷掉 package 配置，再补充写入一次并再次刷新
+# 6. 再次补写并刷新（防止 defconfig 将未满足依赖的配置清理）
 cat <<EOF >> .config
 CONFIG_PACKAGE_kmod-nfnetlink=y
 CONFIG_PACKAGE_kmod-nfnetlink-queue=y
 CONFIG_PACKAGE_kmod-nft-queue=y
+CONFIG_PACKAGE_iptables-mod-nfqueue=y
 EOF
 make defconfig
 
